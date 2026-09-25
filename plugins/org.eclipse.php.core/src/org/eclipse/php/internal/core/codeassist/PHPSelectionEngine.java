@@ -257,6 +257,10 @@ public class PHPSelectionEngine extends ScriptSelectionEngine {
 		}
 
 		end = PHPTextSequenceUtilities.readIdentifierEndIndex(source, end, true);
+		IModelElement[] constantMethod = resolveObjectConstantMethod(sourceModule, cache, source, offset);
+		if (constantMethod != null) {
+			return constantMethod;
+		}
 
 		ModuleDeclaration parsedUnit = SourceParserUtil.getModuleDeclaration(sourceModule, null);
 
@@ -525,6 +529,64 @@ public class PHPSelectionEngine extends ScriptSelectionEngine {
 		 * sourceModule, offset, null, null); return types; } } }
 		 */
 		return null;
+	}
+
+	private IModelElement[] resolveObjectConstantMethod(ISourceModule sourceModule, IModelAccessCache cache,
+			String source, int methodStart) {
+		int operatorEnd = methodStart;
+		while (operatorEnd > 0 && Character.isWhitespace(source.charAt(operatorEnd - 1))) {
+			operatorEnd--;
+		}
+		if (operatorEnd < 2 || source.charAt(operatorEnd - 2) != '-' || source.charAt(operatorEnd - 1) != '>') {
+			return null;
+		}
+
+		int constantEnd = operatorEnd - 2;
+		while (constantEnd > 0 && Character.isWhitespace(source.charAt(constantEnd - 1))) {
+			constantEnd--;
+		}
+		int constantStart = constantEnd;
+		while (constantStart > 0 && Character.isJavaIdentifierPart(source.charAt(constantStart - 1))) {
+			constantStart--;
+		}
+		if (constantStart == constantEnd
+				|| constantStart > 0 && source.charAt(constantStart - 1) == '$') {
+			return null;
+		}
+
+		int methodEnd = methodStart;
+		while (methodEnd < source.length() && Character.isJavaIdentifierPart(source.charAt(methodEnd))) {
+			methodEnd++;
+		}
+		if (methodStart == methodEnd) {
+			return null;
+		}
+		int openParenthesis = methodEnd;
+		while (openParenthesis < source.length() && Character.isWhitespace(source.charAt(openParenthesis))) {
+			openParenthesis++;
+		}
+		if (openParenthesis >= source.length() || source.charAt(openParenthesis) != '(') {
+			return null;
+		}
+
+		String constantName = source.substring(constantStart, constantEnd);
+		IType[] types = CodeAssistUtils.getConstantType(sourceModule, constantName, constantStart);
+		if (types == null || types.length == 0) {
+			return null;
+		}
+
+		String methodName = source.substring(methodStart, methodEnd);
+		List<IModelElement> methods = new LinkedList<>();
+		for (IType type : types) {
+			try {
+				ITypeHierarchy hierarchy = cache.getSuperTypeHierarchy(type, null);
+				methods.addAll(Arrays.asList(
+						PHPModelUtils.getFirstTypeHierarchyMethod(type, hierarchy, methodName, true, null)));
+			} catch (CoreException e) {
+				PHPCorePlugin.log(e);
+			}
+		}
+		return methods.toArray(new IModelElement[methods.size()]);
 	}
 
 	private IModelElement[] lookForMatchingElements(PHPDocTag[] tags, ISourceModule sourceModule,

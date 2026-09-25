@@ -1,0 +1,15 @@
+--TEST--
+Select a property through an object-valued global constant
+--FILE--
+<?php
+class Database
+{
+	public mixed $error = null;
+}
+
+define('DATABASE', new Database());
+
+DATABASE->|error|;
+?>
+--EXPECT--
+field($error)

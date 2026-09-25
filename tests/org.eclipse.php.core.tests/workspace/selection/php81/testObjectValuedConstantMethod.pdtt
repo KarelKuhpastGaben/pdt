@@ -1,0 +1,18 @@
+--TEST--
+Select a method through an object-valued global constant
+--FILE--
+<?php
+class Database
+{
+	public function query(): mixed
+	{
+		return null;
+	}
+}
+
+define('DATABASE', new Database());
+
+DATABASE->|query|();
+?>
+--EXPECT--
+method(query)
