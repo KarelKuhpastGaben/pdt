@@ -103,8 +103,8 @@ public class ConstantDeclarationEvaluator extends GoalEvaluator {
 				ConstantDeclarationSearcher searcher = new ConstantDeclarationSearcher(fileOffsets, constantName);
 				try {
 					moduleDeclaration.traverse(searcher);
-					for (Scalar scalar : searcher.getDeclarations()) {
-						subGoals.add(new ExpressionTypeGoal(goal.getContext(), scalar));
+					for (Expression expression : searcher.getDeclarations()) {
+						subGoals.add(new ExpressionTypeGoal(goal.getContext(), expression));
 					}
 				} catch (Exception e) {
 					PHPCorePlugin.log(e);
@@ -135,7 +135,7 @@ public class ConstantDeclarationEvaluator extends GoalEvaluator {
 		private int currentStart;
 		private int currentEnd;
 		private boolean stopProcessing;
-		private List<Scalar> declarations = new LinkedList<>();
+		private List<Expression> declarations = new LinkedList<>();
 
 		public ConstantDeclarationSearcher(SortedSet<ISourceRange> offsets, String constantName) {
 			this.constantName = constantName;
@@ -143,7 +143,7 @@ public class ConstantDeclarationEvaluator extends GoalEvaluator {
 			setNextRange();
 		}
 
-		public List<Scalar> getDeclarations() {
+		public List<Expression> getDeclarations() {
 			return declarations;
 		}
 
@@ -168,14 +168,13 @@ public class ConstantDeclarationEvaluator extends GoalEvaluator {
 			if ("define".equalsIgnoreCase(node.getName())) { //$NON-NLS-1$
 				// report global constant:
 				List<ASTNode> args = node.getArgs().getChilds();
-				if (args.size() == 2) {
+				if (args.size() >= 2) {
 					ASTNode firstArg = args.get(0);
 					ASTNode secondArg = args.get(1);
-					if (firstArg instanceof Scalar && secondArg instanceof Scalar) {
+					if (firstArg instanceof Scalar && secondArg instanceof Expression) {
 						Scalar constantName = (Scalar) firstArg;
-						Scalar constantValue = (Scalar) secondArg;
 						if (this.constantName.equals(stripQuotes(constantName.getValue()))) {
-							declarations.add(constantValue);
+							declarations.add((Expression) secondArg);
 						}
 					}
 				}
@@ -189,7 +188,7 @@ public class ConstantDeclarationEvaluator extends GoalEvaluator {
 			}
 			Expression value = node.getConstantValue();
 			if (value instanceof Scalar) {
-				declarations.add((Scalar) value);
+				declarations.add(value);
 			}
 			return visitGeneral(node);
 		}

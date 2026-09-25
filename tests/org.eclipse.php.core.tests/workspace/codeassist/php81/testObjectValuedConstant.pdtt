@@ -1,0 +1,18 @@
+--TEST--
+Object-valued global constant member completion
+--FILE--
+<?php
+class Database
+{
+	public function query(): mixed
+	{
+		return null;
+	}
+}
+
+define('DATABASE', new Database());
+
+DATABASE->|
+?>
+--EXPECT--
+method(query)

@@ -15,6 +15,7 @@ package org.eclipse.php.internal.core.typeinference.evaluators;
 
 import org.eclipse.dltk.ast.ASTNode;
 import org.eclipse.dltk.ast.declarations.TypeDeclaration;
+import org.eclipse.dltk.ast.references.ConstantReference;
 import org.eclipse.dltk.ast.references.TypeReference;
 import org.eclipse.dltk.ast.references.VariableReference;
 import org.eclipse.dltk.ti.IGoalEvaluatorFactory;
@@ -88,6 +89,9 @@ public class DefaultPHPGoalEvaluatorFactory implements IGoalEvaluatorFactory {
 		if (expressionClass == Scalar.class) {
 			Scalar scalar = (Scalar) expression;
 			return new ScalarEvaluator(exprGoal, scalar);
+		}
+		if (expressionClass == ConstantReference.class) {
+			return new ConstantReferenceEvaluator(exprGoal, (ConstantReference) expression);
 		}
 		if (expressionClass == TypeReference.class || expressionClass == FullyQualifiedReference.class) {
 			TypeReference type = (TypeReference) expression;

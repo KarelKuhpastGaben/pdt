@@ -22,6 +22,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.dltk.annotations.NonNull;
 import org.eclipse.dltk.ast.declarations.ModuleDeclaration;
+import org.eclipse.dltk.ast.references.ConstantReference;
 import org.eclipse.dltk.ast.references.VariableReference;
 import org.eclipse.dltk.core.*;
 import org.eclipse.dltk.evaluation.types.AmbiguousType;
@@ -199,6 +200,31 @@ public class CodeAssistUtils {
 			IType[] modelElements = getTypes(position, context, evaluatedType);
 			// IType[] modelElements = PHPTypeInferenceUtils.getModelElements(
 			// evaluatedType, (ISourceModuleContext) context, position);
+			if (modelElements != null) {
+				return modelElements;
+			}
+		}
+		return EMPTY_TYPES;
+	}
+
+	/**
+	 * Returns the type of an object-valued constant.
+	 *
+	 * @param sourceModule
+	 * @param constantName
+	 * @param position
+	 * @return the constant value type, or an empty array when it cannot be inferred
+	 */
+	public static IType[] getConstantType(ISourceModule sourceModule, String constantName, int position) {
+		ModuleDeclaration moduleDeclaration = SourceParserUtil.getModuleDeclaration(sourceModule, null);
+		IContext context = ASTUtils.findContext(sourceModule, moduleDeclaration, position);
+		if (context != null) {
+			ConstantReference constantReference = new ConstantReference(position, position + constantName.length(),
+					constantName);
+			ExpressionTypeGoal goal = new ExpressionTypeGoal(context, constantReference);
+			PHPTypeInferencer typeInferencer = new PHPTypeInferencer();
+			IEvaluatedType evaluatedType = typeInferencer.evaluateType(goal);
+			IType[] modelElements = getTypes(position, context, evaluatedType);
 			if (modelElements != null) {
 				return modelElements;
 			}
@@ -686,6 +712,16 @@ public class CodeAssistUtils {
 		if (className != null && className.length() > 0 && className.charAt(0) == '$') {
 			int statementStart = statementText.getOriginalOffset(classNameStart);
 			return getVariableType(sourceModule, className, statementStart);
+		}
+		// Object-valued constants are valid receivers since PHP 8.1. Unlike
+		// variables and function calls, a bare constant has no syntactic marker,
+		// so resolve the identifier through normal expression type inference.
+		if (!isClassTriger && classNameStart >= 0 && className != null && className.length() > 0) {
+			int statementStart = statementText.getOriginalOffset(classNameStart);
+			IType[] constantTypes = getConstantType(sourceModule, className, statementStart);
+			if (ArrayUtils.isNotEmpty(constantTypes)) {
+				return constantTypes;
+			}
 		}
 		boolean arrayReference = false;
 		if (propertyEndPosition > 0 && statementText.charAt(propertyEndPosition - 1) == ']'
